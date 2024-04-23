@@ -1,0 +1,93 @@
+name: RISC-V Arch Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  setup:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: Install OSS-CAD-Suite
+        uses: YosysHQ/setup-oss-cad-suite@v3
+
+      - name: Setup Python 3.6
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.6.7'
+
+      - name: Cache RISC-V GNU Toolchain
+        id: cache-riscv-gnu-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/riscv-toolchain
+          key: riscv64-elf-ubuntu-20.04-gcc-nightly-2024.04.12
+
+      - name: Create and activate Python virtual environment
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+
+      - name: Install RISCOF
+        run: |
+          source venv/bin/activate
+          pip install git+https://github.com/riscv/riscof.git
+
+      - name: Cache Architecture Tests
+        id: cache-arch-tests
+        uses: actions/cache@v4
+        with:
+          path: ~/riscv-arch-tests
+          key: riscv-arch-tests-RV64I
+
+      - name: Install Test Suite
+        if: steps.cache-arch-tests.cache-hit != 'true'
+        run: |
+          source venv/bin/activate
+          riscof --verbose info arch-test --clone
+          sed -i '158s/TEST_JALR_OP(x7, x0, x4, -0x401, x6, 48,0)/TEST_JALR_OP(x7, x1, x4, -0x401, x6, 48,0)/' riscv-arch-test/riscv-test-suite/rv64i_m/I/src/jalr-01.S
+
+      - name: Install RISC-V GNU Toolchain
+        if: steps.cache-riscv-gnu-toolchain.outputs.cache-hit != 'true'
+        run: |
+          wget -nv https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2024.04.12/riscv64-elf-ubuntu-20.04-gcc-nightly-2024.04.12-nightly.tar.gz -P ~/riscv-toolchain
+          mkdir -p ${{ github.workspace }}/rv64-gcc
+          tar -xzf ~/riscv-toolchain/riscv64-elf-ubuntu-20.04-gcc-nightly-2024.04.12-nightly.tar.gz -C ${{ github.workspace }}/rv64-gcc
+          ${{ github.workspace }}/rv64-gcc/riscv/bin/riscv64-unknown-elf-gcc --version
+
+      - name: Install Sail RISC-V Emulator
+        run: |
+          mkdir -p c_emulator/
+          tar -xzvf bin/riscv_sim_RV64.tar.gz -C c_emulator/ riscv_sim_RV64
+          echo "TODO - Gather bare minimum binaries for c_emulator/riscv_sim_RV64 on x64 Ubuntu 20.04 and install into ${{ github.workspace }}"
+
+      - name: Verify Dependency Installations
+        run: |
+          export PATH=$PATH:${{ github.workspace }}/rv64-gcc/riscv/bin:${{ github.workspace }}/c_emulator/riscv_sim_RV64
+          source venv/bin/activate
+          verilator --version
+          riscv64-unknown-elf-gcc --version
+          riscof --version
+
+      - name: Run RISC-V Architectural Tests
+        run: |
+          export PATH=$PATH:${{ github.workspace }}/rv64-gcc/riscv/bin:${{ github.workspace }}/c_emulator
+          source venv/bin/activate
+          riscof run --no-browser --config=config.ini --suite=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/ --env=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/env
+          
+      - name: Logs
+        if: failure()
+        run: |  
+          tree riscof_work/
+          less riscof_work/rv64i_m/I/src/add-01.S/ref/add-01.log
+          echo "MAKEFILE:"
+          less /home/runner/work/rv64_rough/rv64_rough/riscof_work/Makefile.Reference-sail_c_simulator

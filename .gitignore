@@ -1,0 +1,12 @@
+results/
+obj_dir/
+sim/log.txt
+sim/main.elf
+sim/main.hex
+sim/tmp.bin
+sim/DUT-Lucid64.signature
+plugin-sail_cSim/__pycache__/
+plugin-Lucid64/__pycache__/
+riscof_work/
+sim/output.vcd
+sim/tmp_reversed.bin
