@@ -68,6 +68,18 @@ jobs:
           source venv/bin/activate
           riscof run --no-browser --config=config.ini --suite=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/ --env=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/env
           
+      - name: Generate Reports
+        run: |
+          verilator_coverage riscof_work/rv64i_m/*/*/dut/coverage.dat --write-info riscof_work/coverage.info
+          sudo apt-get install lcov -y
+          genhtml riscof_work/coverage.info -o riscof_work/coverage.html
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: riscof_work/*.html
+
       - name: Logs
         if: failure()
         run: |  
