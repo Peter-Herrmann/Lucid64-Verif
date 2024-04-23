@@ -61,6 +61,7 @@ jobs:
           verilator --version
           riscv64-unknown-elf-gcc --version
           riscof --version
+          sudo apt-get install lcov -y
 
       - name: Run RISC-V Architectural Tests
         run: |
@@ -70,8 +71,9 @@ jobs:
           
       - name: Generate Reports
         run: |
-          verilator_coverage riscof_work/rv64i_m/*/src/*/dut/coverage.dat --write-info riscof_work/coverage.info
-          sudo apt-get install lcov -y
+          echo "Merging Coverage Data..."
+          verilator_coverage -write-info riscof_work/coverage.info -read riscof_work/rv64i_m/*/src/*/dut/coverage.dat
+          echo "Generating HTML Coverage Report..."
           genhtml riscof_work/coverage.info -o riscof_work/coverage.html
 
       - name: Upload Artifacts
@@ -83,7 +85,4 @@ jobs:
       - name: Logs
         if: failure()
         run: |  
-          tree riscof_work/
-          less riscof_work/rv64i_m/I/src/add-01.S/ref/add-01.log
-          echo "MAKEFILE:"
-          less /home/runner/work/rv64_rough/rv64_rough/riscof_work/Makefile.Reference-sail_c_simulator
+          tree
