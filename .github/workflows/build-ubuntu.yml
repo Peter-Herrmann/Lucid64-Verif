@@ -72,7 +72,7 @@ jobs:
       - name: Generate Reports
         run: |
           echo "Merging Coverage Data..."
-          verilator_coverage -write-info riscof_work/coverage.info -read riscof_work/rv64i_m/*/src/*/dut/coverage.dat
+          verilator_coverage --write-info riscof_work/coverage.info riscof_work/rv64i_m/*/src/*/dut/coverage.dat
           echo "Generating HTML Coverage Report..."
           genhtml riscof_work/coverage.info -o riscof_work/coverage.html
 
