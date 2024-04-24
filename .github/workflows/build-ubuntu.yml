@@ -85,6 +85,8 @@ jobs:
             riscof_work/report.html
             riscof_work/style.css
             riscof_work/coverage/
+            sim/log.txt
+            sim/output.vcd
 
       - name: Logs
         if: failure()

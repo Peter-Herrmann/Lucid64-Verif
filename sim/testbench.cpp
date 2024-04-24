@@ -83,7 +83,7 @@ int main(int argc, char** argv)
             uint64_t i_addr_whole   = (uint64_t)cpu->imem_addr_o;
             uint64_t i_bl_idx       = (i_addr_whole) >> 3;
             uint64_t i_mem_idx      = (i_addr_whole - text_offset) >> 3;
-            bool     i_offset_word  = (i_addr_whole & 0b0100);
+            bool     i_offset_word  = (((i_addr_whole >> 2) % 2) != 0);
 
             bool     d_req          =     (bool)cpu->dmem_req_o;
             bool     d_we           =     (bool)cpu->dmem_we_o;
