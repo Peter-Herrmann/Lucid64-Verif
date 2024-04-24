@@ -29,14 +29,8 @@ int main(int argc, char** argv)
         cpu->trace(vcd, 99);
         vcd->open("output.vcd");
 
-        std::vector<uint64_t> memory = readHexFile("test.hex");
-
-
-        // Initialize bootloader
-        std::vector<uint32_t> bootloader(3);    // # Jump to 0x80000000
-        bootloader[0]  = 0x00100793;            // li      a5, 1
-        bootloader[1]  = 0x01F79793;            // slli    a5, a5, 31
-        bootloader[2]  = 0x00078067;            // jr      a5
+        std::vector<uint64_t> memory     = readHexFile("test.hex");
+        std::vector<uint64_t> bootloader = readHexFile("bootloader.hex");
 
         // Define a dynamic memory map for writes outside of defined memory
         std::unordered_map<uint64_t, uint64_t> dynamic_memory;
@@ -86,15 +80,16 @@ int main(int argc, char** argv)
 
             // Non-persistent dynamic variables
             bool     i_req          =     (bool)cpu->imem_req_o;
-            uint64_t i_addr_word    = (uint64_t)cpu->imem_addr_o;
-            uint64_t i_bl_idx       = (i_addr_word) >> 2;
-            uint64_t i_mem_idx      = (i_addr_word - text_offset) >> 3;
+            uint64_t i_addr_whole   = (uint64_t)cpu->imem_addr_o;
+            uint64_t i_bl_idx       = (i_addr_whole) >> 3;
+            uint64_t i_mem_idx      = (i_addr_whole - text_offset) >> 3;
+            bool     i_offset_word  = (i_addr_whole & 0b0100);
 
             bool     d_req          =     (bool)cpu->dmem_req_o;
             bool     d_we           =     (bool)cpu->dmem_we_o;
             uint8_t  d_be           =  (uint8_t)cpu->dmem_be_o;
             uint32_t d_addr_whole   = (uint32_t)cpu->dmem_addr_o;
-            uint32_t d_bl_idx       = (d_addr_whole) >> 2;
+            uint32_t d_bl_idx       = (d_addr_whole) >> 3;
             uint32_t d_mem_idx      = (d_addr_whole - text_offset) >> 3;
 
             uint64_t write_data     = (uint64_t)cpu->dmem_wdata_o;
@@ -116,20 +111,32 @@ int main(int argc, char** argv)
             if (i_req && ~cpu->clk_i)
             {
                 // Main memory
-                if (i_addr_word < mem_max && i_addr_word >= text_offset)
-                    queued_instr = ((i_bl_idx) % 2 != 0) ? 
+                if (i_addr_whole < mem_max && i_addr_whole >= text_offset)
+                    queued_instr = (i_offset_word) ? 
                                     (uint32_t) (memory[i_mem_idx] >> 32) : 
                                     (uint32_t) (memory[i_mem_idx]);
                 // Bootloader
                 else if (i_bl_idx < bl_size) 
-                    queued_instr = bootloader[i_bl_idx];
+                    queued_instr = (i_offset_word) ? 
+                                    (uint32_t) (bootloader[i_bl_idx] >> 32) : 
+                                    (uint32_t) (bootloader[i_bl_idx]);
+                // Signature
+                else if (i_addr_whole == sig_addr)
+                    queued_instr = (i_offset_word) ? 
+                                    (uint32_t) (sig_file_data >> 32) : 
+                                    (uint32_t) (sig_file_data);
+                // Reading Previously Written Values Anywhere Else
+                else if (dynamic_memory.count(i_addr_whole))
+                    queued_instr = (i_offset_word) ? 
+                                    (uint32_t) (dynamic_memory[d_addr_whole] >> 32) : 
+                                    (uint32_t) (dynamic_memory[d_addr_whole]);
                 // Misprediction buffer
                 else if ((i_mem_idx >= mem_size && i_mem_idx < mem_size + 5) 
                     || (i_bl_idx >= bl_size && i_bl_idx < bl_size + 5))
                     queued_instr = 0x00000013;
                 // Invalid access
                 else 
-                    throw std::out_of_range("INSTRUCTION_ADDR out of range: " + hexString((uint64_t)i_addr_word, 8));
+                    throw std::out_of_range("INSTRUCTION_ADDR out of range: " + hexString((uint64_t)i_addr_whole, 8));
             }
 
 
@@ -141,7 +148,7 @@ int main(int argc, char** argv)
                     queued_data_read = memory[d_mem_idx];
                 // Bootloader
                 else if (d_bl_idx < bl_size-1)
-                    queued_data_read = (((uint64_t)bootloader[d_bl_idx]) << 32) + bootloader[d_bl_idx];
+                    queued_data_read = bootloader[d_bl_idx];
                 // Signature
                 else if (d_addr_whole == sig_addr)
                     queued_data_read = sig_file_data;
@@ -152,7 +159,7 @@ int main(int argc, char** argv)
                 else
                 {
                     queued_data_read = 0x0;
-                    throw std::out_of_range("Reading uninitialized memory: " + hexString((uint64_t)i_addr_word, 8));
+                    throw std::out_of_range("Reading uninitialized memory: " + hexString((uint64_t)d_addr_whole, 8));
                 }
                 if (main_time % 2)
                     std::cout << "READ ADDR: "  + hexString((uint64_t)d_addr_whole, 16) + 
@@ -191,7 +198,7 @@ int main(int argc, char** argv)
             // Logging (once per clock cycle)
             if (cpu->clk_i && main_time % 2) 
             {
-                std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_word, 8)
+                std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_whole, 8)
                            + " INST: " + hexString((uint64_t)latched_instr, 8)
                            + "\n";
             }
