@@ -36,7 +36,7 @@ $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
 compile: $(TEST_EXE)
 
 clean:
-	rm -f *.o *.out *.hex *.signature *.bin *.txt $(TEST_EXE)
+	rm -f *.o *.out $(MEM_HEX) *.signature *.bin *.txt $(TEST_EXE)
 	rm -rf obj_dir
 
 run: $(SIGNATURE)
