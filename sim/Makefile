@@ -23,6 +23,8 @@ $(TEST_EXE):
 	verilator -Wall -O0 --threads 4 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
 
 $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
+	ls -lah >> log.txt
+	tree -f >> log.txt
 	./obj_dir/$(TEST_EXE) >> log.txt
 	printf "\n\nTest complete, Signature File:\n\n" >> log.txt
 	cat $(SIGNATURE) >> log.txt

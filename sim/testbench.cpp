@@ -276,7 +276,7 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
             line.pop_back();
         }
 
-        std::cout << "Line read: " << line << std::endl; // Debug output
+        // std::cout << "Line read: " << line << std::endl; // Debug output
 
         line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return !std::isxdigit(c); }), line.end());
 
@@ -285,7 +285,7 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
             memory.push_back(value);
         }
 
-        std::cout << "Current vector size: " << memory.size() << std::endl; // Debug output
+        // std::cout << "Current vector size: " << memory.size() << std::endl; // Debug output
     }
     hexFile.close();
 
