@@ -261,8 +261,7 @@ void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue)
 
 
 std::vector<uint64_t> readHexFile(const std::string& filename) {
-    // Open the file to count lines and read hex values
-    std::ifstream hexFile(filename, std::ios::binary);  // Open in binary mode to handle line endings manually
+    std::ifstream hexFile(filename, std::ios::binary);
     if (!hexFile.is_open()) {
         std::cerr << "Failed to open file: " << filename << std::endl;
         return {};
@@ -273,19 +272,20 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
     uint64_t value;
 
     while (std::getline(hexFile, line)) {
-        // Handle different line endings by removing carriage return if it exists
         if (!line.empty() && line.back() == '\r') {
             line.pop_back();
         }
 
-        // Remove any non-hexadecimal characters
+        std::cout << "Line read: " << line << std::endl; // Debug output
+
         line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return !std::isxdigit(c); }), line.end());
 
-        // Check if the line is empty after cleaning (ignore empty lines)
         if (!line.empty()) {
             std::istringstream(line) >> std::hex >> value;
-            memory.push_back(value);  // Use push_back instead of direct access
+            memory.push_back(value);
         }
+
+        std::cout << "Current vector size: " << memory.size() << std::endl; // Debug output
     }
     hexFile.close();
 
