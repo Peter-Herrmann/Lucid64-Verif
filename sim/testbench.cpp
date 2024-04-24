@@ -210,15 +210,15 @@ int main(int argc, char** argv)
     } 
     catch (const std::out_of_range& e)
     {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cout << "Error: " << e.what() << std::endl;
     }
     catch (const std::exception& e) 
     {
-        std::cerr << "Standard Exception: " << e.what() << std::endl;
+        std::cout << "Standard Exception: " << e.what() << std::endl;
     }
     catch (...) 
     {
-        std::cerr << "Unknown Exception occurred." << std::endl;
+        std::cout << "Unknown Exception occurred." << std::endl;
     }
 
     
@@ -263,7 +263,7 @@ void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue)
 std::vector<uint64_t> readHexFile(const std::string& filename) {
     std::ifstream hexFile(filename, std::ios::binary);
     if (!hexFile.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
+        std::cout << "Failed to open file: " << filename << std::endl;
         return {};
     }
 
