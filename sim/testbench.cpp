@@ -29,27 +29,8 @@ int main(int argc, char** argv)
         cpu->trace(vcd, 99);
         vcd->open("output.vcd");
 
-        // std::vector<uint64_t> memory = readHexFile("test.hex");
-        // Count the lines in the hex file to resize the memory accordingly
-        std::ifstream hexFileCount("test.hex");
-        std::string tempLine;
-        size_t lineCount = std::count(std::istreambuf_iterator<char>(hexFileCount),
-                                      std::istreambuf_iterator<char>(), '\n');
-        hexFileCount.close();
-        
-        // Resize memory to match the number of lines in the hex file
-        std::vector<uint64_t> memory(lineCount);
-        std::ifstream hexFile("test.hex");
-        std::string line;
-        int address = 0;
-        uint64_t value;
-        while (std::getline(hexFile, line)) 
-        {
-            line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return !std::isxdigit(c); }), line.end());
-            std::istringstream(line) >> std::hex >> value;
-            memory[address++] = value; 
-        }
-        hexFile.close();
+        std::vector<uint64_t> memory = readHexFile("test.hex");
+
 
         // Initialize bootloader
         std::vector<uint32_t> bootloader(3);    // # Jump to 0x80000000
