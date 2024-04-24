@@ -1,4 +1,5 @@
-SRC_DIR=../src
+REPO_ROOT=$(shell git rev-parse --show-toplevel)
+SRC_DIR=$(REPO_ROOT)/src
 RTL_TOP=$(SRC_DIR)/Lucid64.v
 INC_DIRS=$(SRC_DIR)
 
