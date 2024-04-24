@@ -1,0 +1,6 @@
+read -incdir src/
+read_verilog src/*.v
+
+synth -top Lucid64
+
+write_verilog

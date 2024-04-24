@@ -4,10 +4,11 @@ VERILATOR = verilator
 VERILATOR_FLAGS = --language 1364-2005 --lint-only -Wall -Isrc/
 
 YOSYS = yosys
-YOSYS_FLAGS = -p "synth -flatten; write_verilog"
+YOSYS_FLAGS = -s synth/synth_generic.ys
 
-DIRECTORIES = src
-VERILOG_SOURCES = $(shell find $(DIRECTORIES) -name '*.v')
+SRC_DIR = src
+VERILOG_SOURCES = $(shell find $(SRC_DIR) -name '*.v')
+VERILOG_TOP=$(SRC_DIR)/Lucid64.v
 
 # Define colors
 RED = \033[1;31m
@@ -25,7 +26,7 @@ lint:
 
 synth: 
 	@printf "\n${BLUE}%79s${NC}\n\n" "======================= Synthesizing with Yosys ========================"
-	@$(MAKE) -s $(VERILOG_SOURCES:%=results/synth/%.synth.log)
+	@$(MAKE) -s $(VERILOG_TOP:%=results/synth/%.synth.log)
 
 %.lint: %
 	@printf "Linting %-47s" "$<"
