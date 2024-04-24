@@ -12,6 +12,7 @@
 
 std::string hexString(uint64_t num, int width);
 void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue);
+std::vector<uint64_t> readHexFile(const std::string& filename);
 
 
 int main(int argc, char** argv) 
@@ -71,10 +72,8 @@ int main(int argc, char** argv)
         // Persistent data buffers for timing
         uint32_t queued_instr      = 0;
         uint32_t latched_instr     = 0;
-        uint32_t delayed_instr     = 0;
         uint64_t queued_data_read  = 0;
         uint64_t latched_data_read = 0;
-        uint64_t delayed_data_read = 0;
 
         std::cout << "\n\nMemory Size: " + hexString((uint64_t)memory.size(), 8) + "\n";
 
@@ -82,6 +81,11 @@ int main(int argc, char** argv)
         cpu->clk_i = 0;
         cpu->rst_ni = 0;
 
+        cpu->imem_gnt_i    = 1;
+        cpu->imem_rvalid_i = 1;
+
+        cpu->dmem_gnt_i    = 1;
+        cpu->dmem_rvalid_i = 1;
 
         while (!Verilated::gotFinish()) 
         {
@@ -94,17 +98,14 @@ int main(int argc, char** argv)
             if (main_time > timeout_value)
                 throw std::out_of_range("Timed out.");
 
-            // Dump waveforms to VCD
-            vluint64_t half_time = main_time / (vluint64_t)(2);
-            vcd->dump(main_time);
-
+            // Logging only for alert signal, arch tests do not quit on unaligned access
             if (cpu->alert_o && cpu->clk_i)
                 std::cout << "CPU alert signal received";
 
             // Non-persistent dynamic variables
             bool     i_req          =     (bool)cpu->imem_req_o;
             uint64_t i_addr_word    = (uint64_t)cpu->imem_addr_o;
-            uint64_t i_bl_idx       = i_addr_word >> 2;
+            uint64_t i_bl_idx       = (i_addr_word) >> 2;
             uint64_t i_mem_idx      = (i_addr_word - text_offset) >> 3;
 
             bool     d_req          =     (bool)cpu->dmem_req_o;
@@ -120,12 +121,12 @@ int main(int argc, char** argv)
             // MEMORY READ CONTROL //
             /////////////////////////
 
-            // Delay data reads quarter cycle or hold times violated, timing will be wrong
-            delayed_instr     = latched_instr;
-            delayed_data_read = latched_data_read;
+            // Delay data reads on sim cycle (1/4 clock period) or hold times violated, timing will be wrong
+            cpu->imem_rdata_i = latched_instr;
+            cpu->dmem_rdata_i = latched_data_read;
             if (cpu->clk_i)
             {
-                latched_instr = queued_instr;
+                latched_instr     = queued_instr;
                 latched_data_read = queued_data_read;
             }
 
@@ -202,55 +203,36 @@ int main(int argc, char** argv)
                     dynamic_memory[d_addr_whole] = write_data;
             }
 
-
+            //////////////////////////
+            // Post Cycle Analytics //
+            //////////////////////////
             // Logging (once per clock cycle)
-            if (cpu->clk_i && main_time %2) 
+            if (cpu->clk_i && main_time % 2) 
             {
                 std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_word, 8)
                            + " INST: " + hexString((uint64_t)latched_instr, 8)
                            + "\n";
             }
-
-            cpu->imem_gnt_i    = 1;
-            cpu->imem_rvalid_i = 1;
-            cpu->imem_rdata_i  = delayed_instr;
-
-            cpu->dmem_gnt_i    = 1;
-            cpu->dmem_rvalid_i = 1;
-            cpu->dmem_rdata_i  = delayed_data_read;
-
+            
+            // Dump waveforms to VCD
+            vcd->dump(main_time);
             cpu->eval();
         }
     } 
-    catch (const std::out_of_range& e) 
-    {
-        cpu->eval();
-        std::cout << "0";
+    catch (const std::out_of_range& e)
         std::cerr << "Error: " << e.what() << std::endl;
-        std::cout << "Error: " << e.what() << std::endl;
-    }
     catch (const std::exception& e) 
-    {
         std::cerr << "Standard Exception: " << e.what() << std::endl;
-        std::cout << "Standard Exception: " << e.what() << std::endl;
-    }
     catch (...) 
-    {
         std::cerr << "Unknown Exception occurred." << std::endl;
-        std::cout << "Unknown Exception occurred." << std::endl;
-    }
-    std::cout << "1";
+
+    
     vcd->close();
-    std::cout << "2";
-
     signatureFile.close();
-
     Verilated::threadContextp()->coveragep()->write("coverage.dat");
-    std::cout << "3";
     delete cpu;
-    std::cout << "4";
     delete vcd;
-    std::cout << "5";
+
     return 0;
 }
 
@@ -280,4 +262,45 @@ void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue)
             *dest = (*dest & ~(0xFFull << (i * 8))) | ((writeValue & (0xFFull << (i * 8))));
         }
     }
+}
+
+
+std::vector<uint64_t> readHexFile(const std::string& filename) {
+    // Open the file to count lines
+    std::ifstream hexFileCount(filename);
+    if (!hexFileCount.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return {};
+    }
+
+    // Count the lines in the file
+    std::string tempLine;
+    size_t lineCount = std::count(std::istreambuf_iterator<char>(hexFileCount),
+                                  std::istreambuf_iterator<char>(), '\n');
+    hexFileCount.close();
+
+    // Resize vector to hold the values from the file
+    std::vector<uint64_t> memory(lineCount);
+
+    // Open the file to read hex values
+    std::ifstream hexFile(filename);
+    if (!hexFile.is_open()) {
+        std::cerr << "Failed to open file: " << filename << std::endl;
+        return {};
+    }
+
+    std::string line;
+    size_t address = 0;
+    uint64_t value;
+    while (std::getline(hexFile, line)) {
+        // Remove any non-hexadecimal characters
+        line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return !std::isxdigit(c); }), line.end());
+
+        // Convert the cleaned line from hex to an integer
+        std::istringstream(line) >> std::hex >> value;
+        memory[address++] = value;
+    }
+    hexFile.close();
+
+    return memory;
 }
