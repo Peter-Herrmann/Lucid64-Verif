@@ -52,9 +52,9 @@ int main(int argc, char** argv)
         uint64_t queued_data_read  = 0;
         uint64_t latched_data_read = 0;
 
-        std::cout << "\n\n" +
-                     "Memory Size:     " + hexString((uint64_t)mem_size, 8) + "\n" +
-                     "Bootloader Size: " + hexString((uint64_t)bl_size,  8) + "\n";
+        std::cout << "\n\n" <<
+                     "Memory Size:     " << hexString((uint64_t)mem_size, 8) << "\n" <<
+                     "Bootloader Size: " << hexString((uint64_t)bl_size,  8) << "\n";
 
         vluint64_t main_time = 0; // Add a simulation time variable
         cpu->clk_i = 0;
