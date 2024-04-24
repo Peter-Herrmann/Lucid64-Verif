@@ -29,6 +29,7 @@ int main(int argc, char** argv)
         cpu->trace(vcd, 99);
         vcd->open("output.vcd");
 
+        // std::vector<uint64_t> memory = readHexFile("test.hex");
         // Count the lines in the hex file to resize the memory accordingly
         std::ifstream hexFileCount("test.hex");
         std::string tempLine;
@@ -220,11 +221,17 @@ int main(int argc, char** argv)
         }
     } 
     catch (const std::out_of_range& e)
+    {
         std::cerr << "Error: " << e.what() << std::endl;
+    }
     catch (const std::exception& e) 
+    {
         std::cerr << "Standard Exception: " << e.what() << std::endl;
+    }
     catch (...) 
+    {
         std::cerr << "Unknown Exception occurred." << std::endl;
+    }
 
     
     vcd->close();
