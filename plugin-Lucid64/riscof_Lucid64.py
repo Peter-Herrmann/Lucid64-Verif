@@ -152,6 +152,7 @@ class Lucid64(pluginTemplate):
           utils.shellCommand('cp -f {0}/{1} ./sim/{1}'.format(test_dir, elf)).run()
           utils.shellCommand('make -C ./sim run').run()
           utils.shellCommand('cp -f ./sim/DUT-Lucid64.signature {0}/.'.format(test_dir)).run()
+          utils.shellCommand('cp -f ./sim/coverage.dat {0}/.'.format(test_dir)).run()
 
       # if target runs are not required then we simply exit as this point after running all
       # the makefile targets.

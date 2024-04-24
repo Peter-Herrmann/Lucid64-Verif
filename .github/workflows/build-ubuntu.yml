@@ -61,6 +61,7 @@ jobs:
           verilator --version
           riscv64-unknown-elf-gcc --version
           riscof --version
+          sudo apt-get install lcov -y
 
       - name: Run RISC-V Architectural Tests
         run: |
@@ -68,10 +69,24 @@ jobs:
           source venv/bin/activate
           riscof run --no-browser --config=config.ini --suite=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/ --env=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/env
           
+      - name: Generate Reports
+        run: |
+          echo "Merging Coverage Data..."
+          cd riscof_work
+          verilator_coverage --write-info coverage.info rv64i_m/*/src/*/dut/coverage.dat
+          echo "Generating HTML Coverage Report..."
+          genhtml coverage.info -s --legend -o coverage
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            riscof_work/report.html
+            riscof_work/style.css
+            riscof_work/coverage/
+
       - name: Logs
         if: failure()
         run: |  
-          tree riscof_work/
-          less riscof_work/rv64i_m/I/src/add-01.S/ref/add-01.log
-          echo "MAKEFILE:"
-          less /home/runner/work/rv64_rough/rv64_rough/riscof_work/Makefile.Reference-sail_c_simulator
+          tree

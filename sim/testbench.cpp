@@ -246,6 +246,8 @@ int main(int argc, char** argv)
     std::cout << "2";
 
     signatureFile.close();
+
+    Verilated::threadContextp()->coveragep()->write("coverage.dat");
     std::cout << "3";
     delete cpu;
     std::cout << "4";

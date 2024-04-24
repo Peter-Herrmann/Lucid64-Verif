@@ -1,4 +1,5 @@
-SRC_DIR=../src
+REPO_ROOT=$(shell git rev-parse --show-toplevel)
+SRC_DIR=$(REPO_ROOT)/src
 RTL_TOP=$(SRC_DIR)/Lucid64.v
 INC_DIRS=$(SRC_DIR)
 
@@ -19,7 +20,7 @@ $(MEM_HEX):
 
 
 $(TEST_EXE):
-	verilator -Wall -O3 --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
+	verilator -Wall -O0 --threads 4 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
 
 $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
 	./obj_dir/$(TEST_EXE) >> log.txt
