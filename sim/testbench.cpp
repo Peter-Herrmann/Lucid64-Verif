@@ -52,8 +52,9 @@ int main(int argc, char** argv)
         uint64_t queued_data_read  = 0;
         uint64_t latched_data_read = 0;
 
-        std::cout << "\n\nMemory Size: "     + hexString((uint64_t)mem_size, 8) + "\n";
-        std::cout << "\n\nBootloader Size: " + hexString((uint64_t)bl_size,  8) + "\n";
+        std::cout << "\n\n" +
+                     "Memory Size:     " + hexString((uint64_t)mem_size, 8) + "\n" +
+                     "Bootloader Size: " + hexString((uint64_t)bl_size,  8) + "\n";
 
         vluint64_t main_time = 0; // Add a simulation time variable
         cpu->clk_i = 0;
@@ -260,39 +261,31 @@ void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue)
 
 
 std::vector<uint64_t> readHexFile(const std::string& filename) {
-    // Open the file to count lines
-    std::ifstream hexFileCount(filename);
-    if (!hexFileCount.is_open()) {
-        std::cerr << "Failed to open file: " << filename << std::endl;
-        return {};
-    }
-
-    // Count the lines in the file
-    std::string tempLine;
-    size_t lineCount = std::count(std::istreambuf_iterator<char>(hexFileCount),
-                                  std::istreambuf_iterator<char>(), '\n');
-    hexFileCount.close();
-
-    // Resize vector to hold the values from the file
-    std::vector<uint64_t> memory(lineCount);
-
-    // Open the file to read hex values
-    std::ifstream hexFile(filename);
+    // Open the file to count lines and read hex values
+    std::ifstream hexFile(filename, std::ios::binary);  // Open in binary mode to handle line endings manually
     if (!hexFile.is_open()) {
         std::cerr << "Failed to open file: " << filename << std::endl;
         return {};
     }
 
+    std::vector<uint64_t> memory;
     std::string line;
-    size_t address = 0;
     uint64_t value;
+
     while (std::getline(hexFile, line)) {
+        // Handle different line endings by removing carriage return if it exists
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+
         // Remove any non-hexadecimal characters
         line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return !std::isxdigit(c); }), line.end());
 
-        // Convert the cleaned line from hex to an integer
-        std::istringstream(line) >> std::hex >> value;
-        memory[address++] = value;
+        // Check if the line is empty after cleaning (ignore empty lines)
+        if (!line.empty()) {
+            std::istringstream(line) >> std::hex >> value;
+            memory.push_back(value);  // Use push_back instead of direct access
+        }
     }
     hexFile.close();
 
