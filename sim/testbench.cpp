@@ -10,10 +10,8 @@
 #include <stdexcept> 
 
 
-
 std::string hexString(uint64_t num, int width);
 void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue);
-
 
 
 int main(int argc, char** argv) 
@@ -62,12 +60,13 @@ int main(int argc, char** argv)
         uint64_t sig_file_data = 0;
 
         // Constants
-        const uint64_t text_offset = 0x80000000;
-        const uint32_t mem_size    = memory.size();
-        const uint64_t mem_max     = text_offset + memory.size()*8;
-        const uint64_t sig_addr    = 0x00000000FFFFFFF8;
-        const uint64_t end_addr    = 0x00000000F0F0F0F0;
-        const uint32_t bl_size     = bootloader.size();
+        const uint64_t   text_offset    = 0x80000000;
+        const uint32_t   mem_size       = memory.size();
+        const uint64_t   mem_max        = text_offset + memory.size()*8;
+        const uint64_t   sig_addr       = 0x00000000FFFFFFF8;
+        const uint64_t   end_addr       = 0x00000000F0F0F0F0;
+        const uint32_t   bl_size        = bootloader.size();
+        const vluint64_t timeout_value  = 2000000;
 
         // Persistent data buffers for timing
         uint32_t queued_instr      = 0;
@@ -77,29 +76,30 @@ int main(int argc, char** argv)
         uint64_t latched_data_read = 0;
         uint64_t delayed_data_read = 0;
 
-
         std::cout << "\n\nMemory Size: " + hexString((uint64_t)memory.size(), 8) + "\n";
 
         vluint64_t main_time = 0; // Add a simulation time variable
-        const vluint64_t timeout_value = 2000000;
         cpu->clk_i = 0;
         cpu->rst_ni = 0;
+
+
         while (!Verilated::gotFinish()) 
         {
+            // Timing Control
+            main_time++;
             if (main_time > 10)
                 cpu->rst_ni = 1;
+            if (main_time % 2)
+                cpu->clk_i = !cpu->clk_i;
+            if (main_time > timeout_value)
+                throw std::out_of_range("Timed out.");
 
             // Dump waveforms to VCD
             vluint64_t half_time = main_time / (vluint64_t)(2);
             vcd->dump(main_time);
 
-            if (main_time++ % 2)
-            {
-                cpu->clk_i = !cpu->clk_i;
-            }
-
-            // if (cpu->alert_o && cpu->clk_i)
-            //     throw std::out_of_range("CPU alert signal received");
+            if (cpu->alert_o && cpu->clk_i)
+                std::cout << "CPU alert signal received";
 
             // Non-persistent dynamic variables
             bool     i_req          =     (bool)cpu->imem_req_o;
@@ -220,8 +220,6 @@ int main(int argc, char** argv)
             cpu->dmem_rdata_i  = delayed_data_read;
 
             cpu->eval();
-            if (main_time > timeout_value)
-                throw std::out_of_range("Timed out.");
         }
     } 
     catch (const std::out_of_range& e) 
