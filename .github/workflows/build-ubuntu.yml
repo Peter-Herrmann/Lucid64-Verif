@@ -75,7 +75,7 @@ jobs:
           cd riscof_work
           verilator_coverage --write-info coverage.info rv64i_m/*/src/*/dut/coverage.dat
           echo "Generating HTML Coverage Report..."
-          genhtml coverage.info -o coverage
+          genhtml coverage.info -s --legend -o coverage
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
