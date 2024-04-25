@@ -129,10 +129,15 @@ int main(int argc, char** argv)
                 latched_data_read = queued_data_read;
             }
 
+            if (mem_resp_cycle)
+            {
+                cpu->imem_gnt_i    = setGnt(&i_gnt_delay, &i_read_outstanding, i_req, false);
+                cpu->imem_rvalid_i = setRvalid(&i_rvalid_delay, &i_read_outstanding);
+                cpu->dmem_gnt_i    = setGnt(&d_gnt_delay, &d_read_outstanding, d_req, d_we);
+                cpu->dmem_rvalid_i = setRvalid(&d_rvalid_delay, &d_read_outstanding);
+            }
 
             // Instruction Reads
-            cpu->imem_gnt_i    = setGnt(&i_gnt_delay, &i_read_outstanding, i_req, false);
-            cpu->imem_rvalid_i = setRvalid(&i_rvalid_delay, &i_read_outstanding);
             if (cpu->imem_rvalid_i && negedge) 
             {
                 uint64_t instruction_double = readMemory(i_addr_whole, memory, bootloader, 
@@ -145,8 +150,6 @@ int main(int argc, char** argv)
 
 
             // Data Reads
-            cpu->dmem_gnt_i    = setGnt(&d_gnt_delay, &d_read_outstanding, d_req, d_we);
-            cpu->dmem_rvalid_i = setRvalid(&d_rvalid_delay, &d_read_outstanding);
             if (cpu->dmem_rvalid_i && negedge) 
             {
                 queued_data_read = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
