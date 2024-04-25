@@ -16,7 +16,10 @@ std::vector<uint64_t> readHexFile(const std::string& filename);
 uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const std::vector<uint64_t>& bootloader,
                     std::unordered_map<uint64_t, uint64_t>& dynamic_memory,
                     uint64_t mem_max, uint64_t text_offset, uint64_t bl_size, uint64_t sig_addr, uint64_t sig_file_data);
-
+bool setGnt(uint32_t *gnt_delay, bool *read_outstanding, bool req, bool we);
+bool setRvalid(uint32_t *rvalid_delay, bool *read_outstanding);
+uint32_t genGntDelay();
+uint32_t genRvalidDelay();
 
 int main(int argc, char** argv) 
 {
@@ -53,6 +56,16 @@ int main(int argc, char** argv)
         uint32_t latched_instr     = 0;
         uint64_t queued_data_read  = 0;
         uint64_t latched_data_read = 0;
+
+        // Variable Memory Latency Timing State
+        uint32_t i_gnt_delay        = genGntDelay();
+        uint32_t i_rvalid_delay     = genRvalidDelay();
+        bool     i_read_outstanding = false;
+
+        uint32_t d_gnt_delay        = genGntDelay();
+        uint32_t d_rvalid_delay     = genRvalidDelay();
+        bool     d_read_outstanding = false;
+
 
         std::cout << "\n\n" <<
                      "Memory Size:     " << hexString((uint64_t)mem_size, 8) << "\n" <<
@@ -116,8 +129,11 @@ int main(int argc, char** argv)
                 latched_data_read = queued_data_read;
             }
 
+
             // Instruction Reads
-            if (i_req && negedge) 
+            cpu->imem_gnt_i    = setGnt(&i_gnt_delay, &i_read_outstanding, i_req, false);
+            cpu->imem_rvalid_i = setRvalid(&i_rvalid_delay, &i_read_outstanding);
+            if (cpu->imem_rvalid_i && negedge) 
             {
                 uint64_t instruction_double = readMemory(i_addr_whole, memory, bootloader, 
                                                          dynamic_memory, mem_max, text_offset, 
@@ -127,8 +143,11 @@ int main(int argc, char** argv)
                                                  (uint32_t)(instruction_double);
             }
 
+
             // Data Reads
-            if (d_req && !d_we && negedge) 
+            cpu->dmem_gnt_i    = setGnt(&d_gnt_delay, &d_read_outstanding, d_req, d_we);
+            cpu->dmem_rvalid_i = setRvalid(&d_rvalid_delay, &d_read_outstanding);
+            if (cpu->dmem_rvalid_i && negedge) 
             {
                 queued_data_read = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
                                               mem_max, text_offset, bl_size, sig_addr, sig_file_data);
@@ -140,7 +159,7 @@ int main(int argc, char** argv)
             //////////////////////////
             // MEMORY WRITE CONTROL //
             //////////////////////////
-            if (d_req && d_we && posedge) 
+            if (cpu->dmem_gnt_i && d_we && posedge) 
             {
 
                 std::cout << "WRITE ADDR: " + hexString((uint64_t)d_addr_whole, 16) + 
@@ -264,6 +283,7 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
     return memory;
 }
 
+
 uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const std::vector<uint64_t>& bootloader,
                     std::unordered_map<uint64_t, uint64_t>& dynamic_memory,
                     uint64_t mem_max, uint64_t text_offset, uint64_t bl_size, uint64_t sig_addr, uint64_t sig_file_data) 
@@ -286,3 +306,34 @@ uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const st
     else
         throw std::out_of_range("Memory address out of range: " + hexString(addr, 8));
 }
+
+
+bool setGnt(uint32_t *gnt_delay, bool *read_outstanding, bool req, bool we)
+{
+    if (req || *read_outstanding)
+        *gnt_delay = genGntDelay();
+    else if ( ( (*gnt_delay)-- ) == 0 )
+    {
+        *gnt_delay = genGntDelay();
+        *read_outstanding = (!we);
+        return true;
+    }
+    return false;
+}
+
+
+bool setRvalid(uint32_t *rvalid_delay, bool *read_outstanding)
+{
+    if (!(*read_outstanding))
+        *rvalid_delay = genRvalidDelay();
+    else if ( ( (*rvalid_delay)-- ) == 0 )
+    {
+        *rvalid_delay = genRvalidDelay();
+        *read_outstanding = false;
+        return true;
+    }
+    return false;
+}
+
+uint32_t genGntDelay()    { return 0; }
+uint32_t genRvalidDelay() { return 0; }
