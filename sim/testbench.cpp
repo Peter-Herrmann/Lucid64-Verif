@@ -79,6 +79,10 @@ int main(int argc, char** argv)
             if (main_time > timeout_value)
                 throw std::out_of_range("Timed out.");
 
+            bool posedge        = (main_time % 4) == 1;
+            bool negedge        = (main_time % 4) == 3;
+            bool mem_resp_cycle = (main_time % 4) == 2;
+
             // Logging only for alert signal, arch tests do not quit on unaligned access
             if (cpu->alert_o && cpu->clk_i)
                 std::cout << "CPU alert signal received";
@@ -113,7 +117,7 @@ int main(int argc, char** argv)
             }
 
             // Instruction Reads
-            if (i_req && ~cpu->clk_i) 
+            if (i_req && negedge) 
             {
                 uint64_t instruction_double = readMemory(i_addr_whole, memory, bootloader, 
                                                          dynamic_memory, mem_max, text_offset, 
@@ -124,20 +128,19 @@ int main(int argc, char** argv)
             }
 
             // Data Reads
-            if (d_req && !d_we && ~cpu->clk_i) 
+            if (d_req && !d_we && negedge) 
             {
                 queued_data_read = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
                                               mem_max, text_offset, bl_size, sig_addr, sig_file_data);
 
-                if (main_time % 2)
-                    std::cout << "READ ADDR: " + hexString((uint64_t)d_addr_whole, 16) +
-                                " DATA: " + hexString((uint64_t)queued_data_read, 16);
+                std::cout << "READ ADDR: " + hexString((uint64_t)d_addr_whole, 16) +
+                             " DATA: " + hexString((uint64_t)queued_data_read, 16);
             }
 
             //////////////////////////
             // MEMORY WRITE CONTROL //
             //////////////////////////
-            if (d_req && d_we && cpu->clk_i && (main_time % 2)) 
+            if (d_req && d_we && posedge) 
             {
 
                 std::cout << "WRITE ADDR: " + hexString((uint64_t)d_addr_whole, 16) + 
@@ -163,8 +166,9 @@ int main(int argc, char** argv)
             //////////////////////////
             // Post Cycle Analytics //
             //////////////////////////
+
             // Logging (once per clock cycle)
-            if (cpu->clk_i && main_time % 2) 
+            if (posedge) 
             {
                 std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_whole,  8)
                            + " INST: "             + hexString((uint64_t)latched_instr, 8)
