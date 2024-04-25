@@ -48,6 +48,12 @@ int main(int argc, char** argv)
         const uint32_t   bl_size        = bootloader.size();
         const vluint64_t timeout_value  = 2000000;
 
+        // Persistent data buffers for timing
+        uint32_t queued_instr      = 0;
+        uint32_t latched_instr     = 0;
+        uint64_t queued_data_read  = 0;
+        uint64_t latched_data_read = 0;
+
         std::cout << "\n\n" <<
                      "Memory Size:     " << hexString((uint64_t)mem_size, 8) << "\n" <<
                      "Bootloader Size: " << hexString((uint64_t)bl_size,  8) << "\n";
@@ -101,29 +107,34 @@ int main(int argc, char** argv)
             // MEMORY READ CONTROL //
             /////////////////////////
 
+            // Delay data reads on sim cycle (1/4 clock period) or hold times violated, timing will be wrong
+            cpu->imem_rdata_i = latched_instr;
+            cpu->dmem_rdata_i = latched_data_read;
+            if (cpu->clk_i)
+            {
+                latched_instr     = queued_instr;
+                latched_data_read = queued_data_read;
+            }
+
             // Instruction Reads
-            if (i_req && mem_resp_cycle) 
+            if (i_req && negedge) 
             {
                 uint64_t instruction_double = readMemory(i_addr_whole, memory, bootloader, 
                                                          dynamic_memory, mem_max, text_offset, 
                                                          bl_size, sig_addr, sig_file_data);
 
-                cpu->imem_rdata_i = (i_offset_word) ? (uint32_t)(instruction_double >> 32) :
-                                                      (uint32_t)(instruction_double);
-
-                std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_whole,      8)
-                           + " INST: "             + hexString((uint64_t)cpu->imem_rdata_i, 8)
-                           + "\n";
+                queued_instr = (i_offset_word) ? (uint32_t)(instruction_double >> 32) :
+                                                 (uint32_t)(instruction_double);
             }
 
             // Data Reads
-            if (d_req && !d_we && mem_resp_cycle) 
+            if (d_req && !d_we && negedge) 
             {
-                cpu->dmem_rdata_i = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
+                queued_data_read = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
                                               mem_max, text_offset, bl_size, sig_addr, sig_file_data);
 
                 std::cout << "READ ADDR: " + hexString((uint64_t)d_addr_whole, 16) +
-                             " DATA: " + hexString((uint64_t)cpu->dmem_rdata_i, 16);
+                             " DATA: " + hexString((uint64_t)queued_data_read, 16);
             }
 
             //////////////////////////
@@ -155,6 +166,14 @@ int main(int argc, char** argv)
             //////////////////////////
             // Post Cycle Analytics //
             //////////////////////////
+
+            // Logging (once per clock cycle)
+            if (posedge) 
+            {
+                std::cout << " INSTRUCTION_ADDR: " + hexString((uint64_t)i_addr_whole,  8)
+                           + " INST: "             + hexString((uint64_t)latched_instr, 8)
+                           + "\n";
+            }
             
             // Dump waveforms to VCD
             vcd->dump(main_time);
@@ -244,7 +263,6 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
 
     return memory;
 }
-
 
 uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const std::vector<uint64_t>& bootloader,
                     std::unordered_map<uint64_t, uint64_t>& dynamic_memory,
