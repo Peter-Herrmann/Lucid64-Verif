@@ -13,6 +13,9 @@
 std::string hexString(uint64_t num, int width);
 void writeBytes(uint64_t* dest, uint8_t strobe, uint64_t writeValue);
 std::vector<uint64_t> readHexFile(const std::string& filename);
+uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const std::vector<uint64_t>& bootloader,
+                    std::unordered_map<uint64_t, uint64_t>& dynamic_memory,
+                    uint64_t mem_max, uint64_t text_offset, uint64_t bl_size, uint64_t sig_addr, uint64_t sig_file_data);
 
 
 int main(int argc, char** argv) 
@@ -43,7 +46,6 @@ int main(int argc, char** argv)
         const uint64_t   sig_addr       = 0x00000000FFFFFFF8;
         const uint64_t   end_addr       = 0x00000000F0F0F0F0;
         const uint32_t   bl_size        = bootloader.size();
-        const uint32_t   bl_max         = bl_size * 8;
         const vluint64_t timeout_value  = 2000000;
 
         // Persistent data buffers for timing
@@ -111,59 +113,25 @@ int main(int argc, char** argv)
             }
 
             // Instruction Reads
-            if (i_req && ~cpu->clk_i)
+            if (i_req && ~cpu->clk_i) 
             {
-                uint64_t instruction_double;
-                
-                // Main memory
-                if (i_addr_whole < mem_max && i_addr_whole >= text_offset)
-                    instruction_double = memory[i_mem_idx];
-                // Bootloader
-                else if (i_bl_idx < bl_size) 
-                    instruction_double = bootloader[i_bl_idx];
-                // Signature
-                else if (i_addr_whole == sig_addr)
-                    instruction_double = sig_file_data;
-                // Reading Previously Written Values Anywhere Else
-                else if (dynamic_memory.count(i_addr_whole))
-                    instruction_double = dynamic_memory[d_addr_whole];
-                // Misprediction buffer
-                else if ( (i_addr_whole >= mem_max && i_addr_whole < mem_max + 0x10) 
-                       || (i_addr_whole >= bl_max  && i_addr_whole < bl_max  + 0x10) )
-                    instruction_double = 0x0000001300000013;
-                // Invalid access
-                else 
-                    throw std::out_of_range("INSTRUCTION_ADDR out of range: " + hexString((uint64_t)i_addr_whole, 8));
-                
-                queued_instr = (i_offset_word) ? (uint32_t) (instruction_double >> 32) : 
-                                                 (uint32_t) (instruction_double);
+                uint64_t instruction_double = readMemory(i_addr_whole, memory, bootloader, 
+                                                         dynamic_memory, mem_max, text_offset, 
+                                                         bl_size, sig_addr, sig_file_data);
+
+                queued_instr = (i_offset_word) ? (uint32_t)(instruction_double >> 32) :
+                                                 (uint32_t)(instruction_double);
             }
 
-
             // Data Reads
-            if (d_req && !d_we && ~cpu->clk_i)
+            if (d_req && !d_we && ~cpu->clk_i) 
             {
-                // Main memory
-                if (d_addr_whole < mem_max && d_addr_whole >= text_offset)
-                    queued_data_read = memory[d_mem_idx];
-                // Bootloader
-                else if (d_bl_idx < bl_size)
-                    queued_data_read = bootloader[d_bl_idx];
-                // Signature
-                else if (d_addr_whole == sig_addr)
-                    queued_data_read = sig_file_data;
-                // Reading Previously Written Values Anywhere Else
-                else if (dynamic_memory.count(d_addr_whole))
-                    queued_data_read = dynamic_memory[d_addr_whole];
-                // Invalid access
-                else
-                {
-                    queued_data_read = 0x0;
-                    throw std::out_of_range("Reading uninitialized memory: " + hexString((uint64_t)d_addr_whole, 8));
-                }
+                queued_data_read = readMemory(d_addr_whole, memory, bootloader, dynamic_memory, 
+                                              mem_max, text_offset, bl_size, sig_addr, sig_file_data);
+
                 if (main_time % 2)
-                    std::cout << "READ ADDR: "  + hexString((uint64_t)d_addr_whole, 16) + 
-                                " DATA: "       + hexString((uint64_t)queued_data_read, 16);
+                    std::cout << "READ ADDR: " + hexString((uint64_t)d_addr_whole, 16) +
+                                " DATA: " + hexString((uint64_t)queued_data_read, 16);
             }
 
             //////////////////////////
@@ -290,4 +258,27 @@ std::vector<uint64_t> readHexFile(const std::string& filename) {
     hexFile.close();
 
     return memory;
+}
+
+uint64_t readMemory(uint64_t addr, const std::vector<uint64_t>& memory, const std::vector<uint64_t>& bootloader,
+                    std::unordered_map<uint64_t, uint64_t>& dynamic_memory,
+                    uint64_t mem_max, uint64_t text_offset, uint64_t bl_size, uint64_t sig_addr, uint64_t sig_file_data) 
+{
+    uint64_t mem_idx = (addr - text_offset) >> 3;
+    uint64_t bl_idx = addr >> 3;
+    uint64_t bl_max = bl_size * 8;
+
+    if (addr < mem_max && addr >= text_offset)
+        return memory[mem_idx];
+    else if (bl_idx < bl_size)
+        return bootloader[bl_idx];
+    else if (addr == sig_addr)
+        return sig_file_data;
+    else if (dynamic_memory.count(addr))
+        return dynamic_memory[addr];
+    else if ((addr >= mem_max && addr < mem_max + 0x10) 
+          || (addr >= bl_max  && addr < bl_max  + 0x10))
+        return 0x0000001300000013; 
+    else
+        throw std::out_of_range("Memory address out of range: " + hexString(addr, 8));
 }
