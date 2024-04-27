@@ -362,4 +362,4 @@ bool setRvalid(int *rvalid_delay, bool *read_outstanding)
 }
 
 int genGntDelay()    { return 1; }
-int genRvalidDelay() { return 0; }
+int genRvalidDelay() { return 1; }
