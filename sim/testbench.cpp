@@ -55,7 +55,7 @@ int main(int argc, char** argv)
         const uint64_t   sig_addr       = 0x00000000FFFFFFF8;
         const uint64_t   end_addr       = 0x00000000F0F0F0F0;
         const uint32_t   bl_size        = bootloader.size();
-        const vluint64_t timeout_value  = 100000;
+        const vluint64_t timeout_value  = 500000;
 
         // Persistent data buffers for timing
         uint32_t queued_instr      = 0;
