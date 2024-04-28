@@ -20,7 +20,7 @@ $(MEM_HEX):
 
 
 $(TEST_EXE):
-	verilator -Wall -O0 --threads 4 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
+	verilator -Wall -O3 --threads 4 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
 
 $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
 	./obj_dir/$(TEST_EXE) >> log.txt
@@ -34,7 +34,7 @@ $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
 compile: $(TEST_EXE)
 
 clean:
-	rm -f *.o *.out *.hex *.signature *.bin *.txt $(TEST_EXE)
+	rm -f *.o *.out $(MEM_HEX) *.signature *.bin *.txt $(TEST_EXE)
 	rm -rf obj_dir
 
 run: $(SIGNATURE)
