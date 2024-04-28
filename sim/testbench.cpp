@@ -8,6 +8,8 @@
 #include <sstream>
 #include <iomanip>
 #include <stdexcept> 
+#include <random>
+#include <chrono>
 
 
 std::string hexString(uint64_t num, int width);
@@ -20,6 +22,11 @@ bool setGnt(int *gnt_delay, bool *read_outstanding, bool req, bool we, bool rval
 bool setRvalid(int *rvalid_delay, bool *read_outstanding);
 int genGntDelay();
 int genRvalidDelay();
+
+
+unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+std::default_random_engine generator(seed);
+std::uniform_int_distribution<int> distribution(0, 5);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,6 +43,8 @@ int main(int argc, char** argv)
 
     try 
     {
+        std::cout << "Test beginning with random seed: " << seed << std::endl;
+
         // Initialize VCD tracing
         Verilated::traceEverOn(true);
         cpu->trace(vcd, 99);
@@ -361,5 +370,7 @@ bool setRvalid(int *rvalid_delay, bool *read_outstanding)
     return false;
 }
 
-int genGntDelay()    { return 1; }
-int genRvalidDelay() { return 0; }
+int genGntDelay()    { return distribution(generator); }
+int genRvalidDelay() { return distribution(generator); }
+
+// { return distribution(generator); }
