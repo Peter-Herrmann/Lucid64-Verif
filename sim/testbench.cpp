@@ -370,7 +370,7 @@ bool setRvalid(int *rvalid_delay, bool *read_outstanding)
     return false;
 }
 
-int genGntDelay()    { return distribution(generator); }
-int genRvalidDelay() { return distribution(generator); }
+int genGntDelay()    { return 0; }
+int genRvalidDelay() { return 1; }
 
 // { return distribution(generator); }
