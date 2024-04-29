@@ -26,7 +26,8 @@ int genRvalidDelay();
 
 unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
 std::default_random_engine generator(seed);
-std::uniform_int_distribution<int> distribution(0, 5);
+std::uniform_int_distribution<int> delay_time_dist(0, 5);
+std::bernoulli_distribution no_delay_dist(0.875);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
                 cpu->dmem_rvalid_i = queued_d_rvalid;
             }
 
-            if (mem_resp_cycle)
+            if (negedge)
             {
                 cpu->imem_gnt_i = setGnt(&i_gnt_delay, &i_read_outstanding, i_req, false, cpu->imem_rvalid_i);
                 cpu->dmem_gnt_i = setGnt(&d_gnt_delay, &d_read_outstanding, d_req, d_we,  cpu->dmem_rvalid_i);
@@ -370,5 +371,5 @@ bool setRvalid(int *rvalid_delay, bool *read_outstanding)
     return false;
 }
 
-int genGntDelay()    { return distribution(generator); }  
-int genRvalidDelay() { return distribution(generator); }
+int genGntDelay()    { return no_delay_dist(generator) ? 0 : delay_time_dist(generator); }  
+int genRvalidDelay() { return no_delay_dist(generator) ? 0 : delay_time_dist(generator); }
