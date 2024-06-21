@@ -17,19 +17,24 @@ $(MEM_HEX):
 				reversed_lines = [line[::-1] for line in lines]; \
 				open('tmp_reversed.bin', 'wb').write(b''.join(reversed_lines))"
 	xxd -p -c 8 tmp_reversed.bin $@
+	riscv64-unknown-elf-objdump -d $(MEM_ELF) > dut.disass
 
 
 $(TEST_EXE):
-	verilator -Wall -O3 --threads 4 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
+	verilator -O3 --coverage --trace --cc $(RTL_TOP) --exe $(TEST_CPP) -I$(INC_DIRS) -o $@ --build
 
 $(SIGNATURE): $(TEST_EXE) $(MEM_HEX)
 	./obj_dir/$(TEST_EXE) >> log.txt
 	printf "\n\nTest complete, Signature File:\n\n" >> log.txt
+	touch $(SIGNATURE)
+	touch coverage.dat
 	cat $(SIGNATURE) >> log.txt
 	printf "\n\nEnd Signature:\n\n" >> log.txt
 	rm $(MEM_HEX)
 
-.PHONY: compile clean run
+.PHONY: compile clean run hex
+
+hex: $(MEM_HEX)
 
 compile: $(TEST_EXE)
 

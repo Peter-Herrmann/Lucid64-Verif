@@ -2,13 +2,11 @@ name: RISC-V Arch Tests
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
   setup:
     runs-on: ubuntu-20.04
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code
@@ -18,6 +16,19 @@ jobs:
 
       - name: Install OSS-CAD-Suite
         uses: YosysHQ/setup-oss-cad-suite@v3
+
+      - name: Run Verilator Lint
+        run: |
+          make lint_verilator  
+
+      - name: Run Icarus Verilog Lint
+        run: |
+          make lint_iverilog  
+
+      - name: Compile Simulation Model
+        run: |
+          cd sim
+          make compile
 
       - name: Setup Python 3.6
         uses: actions/setup-python@v5
@@ -52,8 +63,7 @@ jobs:
         run: |
           mkdir -p c_emulator/
           tar -xzvf bin/riscv_sim_RV64.tar.gz -C c_emulator/ riscv_sim_RV64
-          echo "TODO - Gather bare minimum binaries for c_emulator/riscv_sim_RV64 on x64 Ubuntu 20.04 and install into ${{ github.workspace }}"
-
+          
       - name: Verify Dependency Installations
         run: |
           export PATH=$PATH:${{ github.workspace }}/rv64-gcc/riscv/bin:${{ github.workspace }}/c_emulator/riscv_sim_RV64
@@ -69,26 +79,26 @@ jobs:
           source venv/bin/activate
           riscof run --no-browser --config=config.ini --suite=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/ --env=${{ github.workspace }}/riscv-arch-test/riscv-test-suite/env
           
-      - name: Generate Reports
-        run: |
-          echo "Merging Coverage Data..."
-          cd riscof_work
-          verilator_coverage --write-info coverage.info rv64i_m/*/src/*/dut/coverage.dat
-          echo "Generating HTML Coverage Report..."
-          genhtml coverage.info -s --legend -o coverage
+      # - name: Generate Reports
+      #   if: always()
+      #   run: |
+      #     echo "Merging Coverage Data..."
+      #     cd riscof_work
+      #     verilator_coverage --write-info coverage.info rv64i_m/*/src/*/dut/coverage.dat
+      #     echo "Generating HTML Coverage Report..."
+      #     genhtml coverage.info -s --legend -o coverage
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: reports
-          path: |
-            riscof_work/report.html
-            riscof_work/style.css
-            riscof_work/coverage/
-            sim/log.txt
-            sim/output.vcd
-
-      - name: Logs
-        if: failure()
-        run: |  
-          tree
+      # - name: Upload Artifacts
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: reports
+      #     path: |
+      #       riscof_work/report.html
+      #       riscof_work/style.css
+      #       riscof_work/coverage/
+      #       riscof_work/rv64i_m/*/src/*/dut/log.txt
+      #       riscof_work/rv64i_m/*/src/*/dut/DUT-Lucid64.signature
+      #       riscof_work/rv64i_m/*/src/*/ref/*.signature
+      #       riscof_work/rv64i_m/*/src/*/ref/*.disass
+      #       riscof_work/rv64i_m/*/src/*/ref/*.log
