@@ -1,0 +1,19 @@
+[options]
+mode bmc
+depth 2
+
+[engines]
+smtbmc
+
+[script]
+read -formal /home/pherrmann/Code/rv-application-rough/src/M_alu.v
+read -formal /home/pherrmann/Code/rv-application-rough/src/Lucid64.vh
+read -formal M_alu_ref.v
+read -formal M_alu_tb.sv
+prep -top M_alu_tb
+
+[files]
+/home/pherrmann/Code/rv-application-rough/src/M_alu.v
+/home/pherrmann/Code/rv-application-rough/src/Lucid64.vh
+M_alu_ref.v
+M_alu_tb.sv
