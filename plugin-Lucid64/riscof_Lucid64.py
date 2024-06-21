@@ -150,10 +150,10 @@ class Lucid64(pluginTemplate):
           utils.shellCommand('cp -f {0}/{1} ./sim/{1}'.format(test_dir, elf)).run()
           utils.shellCommand('make -C ./sim run').run()
           utils.shellCommand('mv -f ./sim/DUT-Lucid64.signature {0}/.'.format(test_dir)).run()
-          utils.shellCommand('mv -f ./sim/coverage.dat {0}/.'.format(test_dir)).run()
-          utils.shellCommand('mv -f ./sim/output.vcd {0}/.'.format(test_dir)).run()
-          utils.shellCommand('mv -f ./sim/log.txt {0}/.'.format(test_dir)).run()
-          utils.shellCommand('mv -f ./sim/dut.disass {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/coverage.dat {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/output.vcd {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/log.txt {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/dut.disass {0}/.'.format(test_dir)).run()
 
       # if target runs are not required then we simply exit as this point after running all
       # the makefile targets.
