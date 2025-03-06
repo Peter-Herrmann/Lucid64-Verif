@@ -1,0 +1,17 @@
+[options]
+mode bmc
+depth 14
+
+[engines]
+smtbmc
+
+[script]
+read -formal delay_vector.v
+read -formal /home/peter/Code/rv-application-rough/src/divider.v
+read -formal -sv tb.sv
+prep -top tb
+
+[files]
+delay_vector.v
+/home/peter/Code/rv-application-rough/src/divider.v
+tb.sv
