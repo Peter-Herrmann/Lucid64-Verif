@@ -3,9 +3,8 @@ Device: Lucid64
 
 hart_ids: [0]
 hart0:
-  ISA: RV64I
-  physical_addr_sz: 56
+  ISA: RV64IMCSUZicntr_Zicsr_Zifencei
+  physical_addr_sz: 39
   User_Spec_Version: '2.3'
   supported_xlen: [64]
   hw_data_misaligned_support: false
-

@@ -1,5 +1,8 @@
 SHELL := /bin/bash
 
+IVERILOG = iverilog
+IVERILOG_FLAGS = -Wall -tnull -Isrc/
+
 VERILATOR = verilator
 VERILATOR_FLAGS = --language 1364-2005 --lint-only -Wall -Isrc/
 
@@ -16,19 +19,28 @@ GREEN = \033[1;32m
 BLUE = \033[1;34m
 NC = \033[0m # No Color
 
-.PHONY: all lint synth always 
+.PHONY: all lint_verilator lint_iverilog lint_all synth always
 
-all: lint synth finish
+all: lint_all synth finish
 
-lint: 
+lint_verilator:
 	@printf "\n${BLUE}%79s${NC}\n\n" "======================== Linting With Verilator ========================"
-	@$(MAKE) -s $(VERILOG_SOURCES:%=%.lint)
+	@$(MAKE) -s $(VERILOG_SOURCES:%=%.lint_verilator)
 
-synth: 
+lint_iverilog:
+	@printf "\n${BLUE}%79s${NC}\n\n" "======================== Linting With Iverilog ========================="
+	@printf "Linting full design with Iverilog"
+	@{ $(IVERILOG) $(IVERILOG_FLAGS) $(VERILOG_SOURCES) > /dev/null 2>&1 && printf "${GREEN}%10s${NC}\n" "PASSED"; } \
+	|| { printf "${RED}%10s${NC}\n" "FAILED" && $(IVERILOG) $(IVERILOG_FLAGS) $(VERILOG_SOURCES); }
+
+lint_all: lint_verilator lint_iverilog
+	@echo "Completed linting with both Verilator and Iverilog."
+
+synth:
 	@printf "\n${BLUE}%79s${NC}\n\n" "======================= Synthesizing with Yosys ========================"
 	@$(MAKE) -s $(VERILOG_TOP:%=results/synth/%.synth.log)
 
-%.lint: %
+%.lint_verilator: %
 	@printf "Linting %-47s" "$<"
 	@{ $(VERILATOR) $(VERILATOR_FLAGS) $< > /dev/null 2>&1 && printf "${GREEN}%10s${NC}\n" "PASSED"; } \
 	|| { printf "${RED}%10s${NC}\n" "FAILED" && $(VERILATOR) $(VERILATOR_FLAGS) $<; }

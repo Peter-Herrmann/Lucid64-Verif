@@ -94,8 +94,6 @@ class Lucid64(pluginTemplate):
       if "C" in ispec["ISA"]:
           self.isa += 'c'
 
-      #TODO: The following assumes you are using the riscv-gcc toolchain. If
-      #      not please change appropriately
       self.compile_cmd = self.compile_cmd+' -mabi='+('lp64 ' if 64 in ispec['supported_xlen'] else 'ilp32 ')
 
     def runTests(self, testList):
@@ -151,8 +149,11 @@ class Lucid64(pluginTemplate):
           utils.shellCommand(cmd).run(cwd=test_dir)
           utils.shellCommand('cp -f {0}/{1} ./sim/{1}'.format(test_dir, elf)).run()
           utils.shellCommand('make -C ./sim run').run()
-          utils.shellCommand('cp -f ./sim/DUT-Lucid64.signature {0}/.'.format(test_dir)).run()
-          utils.shellCommand('cp -f ./sim/coverage.dat {0}/.'.format(test_dir)).run()
+          utils.shellCommand('mv -f ./sim/DUT-Lucid64.signature {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/coverage.dat {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/output.vcd {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/log.txt {0}/.'.format(test_dir)).run()
+        #   utils.shellCommand('mv -f ./sim/dut.disass {0}/.'.format(test_dir)).run()
 
       # if target runs are not required then we simply exit as this point after running all
       # the makefile targets.
