@@ -44,6 +44,7 @@ jobs:
       - name: Install RISCOF
         run: |
           source venv/bin/activate
+          pip install git+https://github.com/riscv-non-isa/riscv-arch-test/#subdirectory=riscv-isac
           pip install git+https://github.com/riscv/riscof.git
 
       - name: Install Test Suite
